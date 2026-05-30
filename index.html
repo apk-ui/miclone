@@ -42,6 +42,25 @@
 </head>
 <body>
 
+<div id="install-modal" class="modal hidden">
+    <div class="modal-content" style="max-width: 360px; text-align: center; padding: 25px 20px;">
+        
+        <div style="width: 70px; height: 70px; background: #e0f2fe; color: #2563eb; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 32px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(37,99,235,0.1);">
+            <i class="fas fa-cloud-download-alt"></i>
+        </div>
+        <h3 style="color: #1e3a8a; margin-bottom: 8px; font-size: 18px;">Unduh Aplikasi</h3>
+        <p style="font-size: 13px; color: #64748b; margin-bottom: 50px; line-height: 1.5;">
+            Tambahkan aplikasi ke layar utama perangkat Anda untuk akses belanja yang lebih cepat dan mudah!
+        </p>
+        <button id="btn-install-app" class="btn-primary" style="background: #2563eb; font-size: 14px; font-weight: bold; padding: 12px;">
+            <i class="fas fa-mobile-alt" style="margin-right: 8px;"></i> Unduh
+        </button>
+        <button onclick="closeInstallModal()" style="background: none; border: none; color: #94a3b8; font-size: 12px; margin-top: 12px; cursor: pointer; text-decoration: underline;">
+            Nanti Saja
+        </button>
+    </div>
+</div>
+
     <div class="phone-container">
         
         <div id="main-header" class="bg-green-600 text-white px-4 py-3 flex flex-col shadow-md transition-all duration-300">
