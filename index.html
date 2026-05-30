@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MiClone - Booking Order</title>
+    <title>MiClone - Cari Teman Sekitar</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -76,7 +76,7 @@
         </div>
         <h3 style="color: #1e3a8a; margin-bottom: 8px; font-size: 18px;">Unduh Aplikasi</h3>
         <p style="font-size: 13px; color: #64748b; margin-bottom: 50px; line-height: 1.5;">
-            Tambahkan aplikasi ke layar utama perangkat Anda untuk akses lebih cepat dan mudah!
+            Tambahkan aplikasi ke layar utama perangkat Anda untuk akses belanja yang lebih cepat dan mudah!
         </p>
         <button id="btn-install-app" class="w-full text-white bg-[#2563eb] rounded-xl font-bold p-3 transition active:scale-95 cursor-pointer">
           <i class="fas fa-mobile-alt mr-2"></i> Unduh
@@ -438,6 +438,16 @@
                 <span class="text-[10px] mt-0.5 font-medium">Saya</span>
             </button>
         </div>
+        
+        <div id="image-fullscreen-modal" class="fixed inset-0 z-[9999] bg-black/95 flex flex-col justify-content-center align-items-center hidden animate-fade-in">
+    <button onclick="closeFullscreenImage()" class="absolute top-5 right-5 text-white text-3xl bg-black/40 hover:bg-black/60 w-12 h-12 rounded-full flex items-center justify-center cursor-pointer transition-all">
+        <i class="fa-solid fa-xmark"></i>
+    </button>
+    
+    <div class="w-full h-full flex items-center justify-center p-4">
+        <img id="fullscreen-target-image" src="" class="max-w-full max-h-full object-contain rounded-lg shadow-2xl select-none" referrerpolicy="no-referrer" alt="Pratinjau Gambar">
+    </div>
+</div>
 
     </div>
 
@@ -946,13 +956,14 @@
                 let bubbleContent = '';
 
                 if (msg.message.startsWith('[IMAGE]')) {
-                    const imageUrl = msg.message.replace('[IMAGE]', '').trim();
-                    bubbleContent = `
-                        <div class="rounded-xl overflow-hidden shadow-xs border border-black/10 bg-gray-200 max-w-[220px] cursor-pointer" onclick="window.open('${imageUrl}', '_blank')">
-                            <img src="${imageUrl}" class="w-full h-auto object-cover max-h-60" referrerpolicy="no-referrer" alt="Gambar Terkirim">
-                        </div>
-                    `;
-                } 
+    const imageUrl = msg.message.replace('[IMAGE]', '').trim();
+    bubbleContent = `
+        <div class="rounded-xl overflow-hidden shadow-xs border border-black/10 bg-gray-200 max-w-[220px] cursor-pointer" onclick="openFullscreenImage('${imageUrl}')">
+            <img src="${imageUrl}" class="w-full h-auto object-cover max-h-60" referrerpolicy="no-referrer" alt="Gambar Terkirim">
+        </div>
+    `;
+}
+
                 else if (msg.message.startsWith('[LOCATION]')) {
                     const coords = msg.message.replace('[LOCATION]', '').trim().split(',');
                     const lat = parseFloat(coords[0]);
@@ -1112,7 +1123,7 @@
                             const div = document.createElement('div');
                             div.className = 'aspect-square w-full bg-gray-100 rounded overflow-hidden shadow-sm cursor-pointer shadow-xs';
                             div.innerHTML = `<img src="${item.url}" class="w-full h-full object-cover" referrerpolicy="no-referrer">`;
-                            div.onclick = () => window.open(item.url, '_blank');
+                            div.onclick = () => openFullscreenImage(item.url);
                             mediaGrid.appendChild(div);
                         });
                     } else {
@@ -1803,7 +1814,7 @@
                             const cb = itemWrapper.querySelector('.photo-checkbox');
                             cb.checked = !cb.checked;
                         } else {
-                            window.open(item.url, '_blank');
+                            openFullscreenImage(item.url);
                         }
                     };
 
@@ -2068,6 +2079,28 @@ if ('serviceWorker' in navigator) {
             .then(reg => console.log('Service Worker terdaftar!', reg))
             .catch(err => console.error('Gagal daftar Service Worker:', err));
     });
+}
+
+// Fungsi untuk membuka gambar secara fullscreen internal
+function openFullscreenImage(url) {
+    const modal = document.getElementById('image-fullscreen-modal');
+    const imgTarget = document.getElementById('fullscreen-target-image');
+    
+    if (modal && imgTarget) {
+        imgTarget.src = url; // Masukkan url gambar ke dalam modal
+        modal.classList.remove('hidden'); // Tampilkan modal
+    }
+}
+
+// Fungsi untuk menutup modal fullscreen
+function closeFullscreenImage() {
+    const modal = document.getElementById('image-fullscreen-modal');
+    const imgTarget = document.getElementById('fullscreen-target-image');
+    
+    if (modal) {
+        modal.classList.add('hidden'); // Sembunyikan modal
+        if (imgTarget) imgTarget.src = ''; // Reset src agar menghemat memori
+    }
 }
 
     </script>
