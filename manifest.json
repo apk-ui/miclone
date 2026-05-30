@@ -13,8 +13,8 @@
       "sizes": "512x512"
     }
   ],
-  "start_url": "/index.html",
-  "background_color": "linear-gradient(#0CB009, #5CB009);",
+  "start_url": "/miclone/index.html",
+  "background_color": "#0CB009",
   "theme_color": "#000000",
   "display": "standalone",
   "orientation": "portrait"
