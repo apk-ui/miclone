@@ -1,0 +1,1952 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MiClone - Cari Teman Sekitar</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        body {
+            background-color: #f3f4f6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: sans-serif;
+        }
+        .phone-container {
+            width: 100%;
+            max-width: 425px;
+            height: 100vh;
+            max-height: 850px;
+            background-color: white;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+        .hidden-page {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="phone-container">
+        
+        <div id="main-header" class="bg-green-600 text-white px-4 py-3 flex flex-col shadow-md transition-all duration-300">
+            <div class="flex justify-between items-center w-full">
+                <div class="flex items-center space-x-2">
+                    <button id="btn-back-profile" onclick="closeUserProfile()" class="hidden-page text-white hover:text-green-200 mr-2 cursor-pointer">
+                        <i class="fas fa-arrow-left text-lg"></i>
+                    </button>
+                    <h1 id="header-title" class="text-xl font-bold tracking-wide">MiClone</h1>
+                </div>
+                <div id="header-actions" class="flex items-center">
+                    <button id="btn-search" onclick="toggleSearchBar()" class="hover:text-green-200 mr-2 cursor-pointer"><i class="fas fa-search text-lg"></i></button>
+                    
+                    <div id="auth-group" class="hidden-page flex space-x-1.5">
+                        <button onclick="handleAuthClick('Masuk')" class="text-[11px] font-semibold bg-white text-green-700 px-2.5 py-1 rounded shadow hover:bg-green-50 transition cursor-pointer">
+                            Masuk
+                        </button>
+                        <button onclick="handleAuthClick('Daftar')" class="text-[11px] font-semibold bg-green-700 text-white border border-green-500 px-2.5 py-1 rounded shadow hover:bg-green-800 transition cursor-pointer">
+                            Daftar
+                        </button>
+                    </div>
+                    <button id="btn-logout" onclick="processLogout()" class="hidden-page text-[12px] font-semibold bg-red-500 text-white px-7.5 py-1 rounded shadow hover:bg-red-700 transition cursor-pointer">
+                        Keluar
+                    </button>
+                </div>
+            </div>
+            
+            <div id="search-bar-container" class="hidden-page mt-2 w-full animate-fade-in">
+                <div class="relative flex items-center">
+                    <input type="text" id="chat-search-input" oninput="filterChatHistory()" placeholder="Cari berdasarkan Nama atau ID..." class="w-full text-xs bg-green-700 text-white border border-green-500 placeholder-green-200 rounded-lg pl-8 pr-8 py-2 focus:outline-none focus:border-white">
+                    <i class="fas fa-search absolute left-2.5 text-green-200 text-xs pointer-events-none"></i>
+                    <button onclick="clearSearchInput()" class="absolute right-2.5 text-green-200 hover:text-white cursor-pointer">
+                        <i class="fas fa-times-circle text-xs"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="chat-room-header" class="hidden-page bg-green-600 text-white px-4 py-3 flex items-center shadow-md z-20">
+            <button onclick="switchPage('chat')" class="text-white mr-3 cursor-pointer"><i class="fas fa-arrow-left text-lg"></i></button>
+            <img id="chat-room-avatar" src="" class="w-9 h-9 rounded-full object-cover mr-2 bg-gray-200">
+            <div class="flex-1 min-w-0">
+                <h2 id="chat-room-target-name" class="font-bold text-sm truncate">---</h2>
+                <p id="chat-room-target-status" class="text-[10px] text-green-200 font-medium">Memuat status...</p>
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto pb-20 relative bg-gray-50">
+            
+            <div id="page-chat" class="p-2 hidden-page">
+                <p class="text-xs font-semibold text-gray-500 px-2 py-1 uppercase tracking-wider mb-2">Riwayat Obrolan</p>
+                <div id="chat-history-list" class="space-y-1">
+                    <div class="text-center py-12 text-xs text-gray-400">
+                        <i class="fas fa-comments text-4xl mb-2 text-gray-300"></i>
+                        <p>Halaman Chat Masih Kosong.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="page-chat-room" class="hidden-page absolute inset-0 flex flex-col bg-gray-100 pb-16 z-10">
+                <div id="chat-messages-container" class="flex-1 overflow-y-auto p-4 space-y-3 flex flex-col"></div>
+                
+                <div class="absolute bottom-0 left-0 right-0 p-2 bg-white border-t border-gray-200 flex items-center space-x-2">
+                    <button onclick="toggleAttachmentMenu()" class="bg-gray-200 hover:bg-gray-200 text-gray-600 w-11 h-11 rounded-full flex items-center justify-center transition active:scale-95 cursor-pointer">
+                        <i id="attachment-icon" class="fas fa-plus text-sm"></i>
+                    </button>
+                    <input type="text" id="chat-input-message" placeholder="Tulis pesan..." class="flex-1 text-sm bg-gray-50 border border-gray-300 rounded-full px-6 py-3.5 focus:outline-none focus:border-green-600">
+                    <button onclick="sendChatMessage()" class="bg-green-600 text-white w-11 h-11 rounded-full flex items-center justify-center shadow hover:bg-green-700 transition active:scale-95 cursor-pointer">
+                        <i class="fas fa-paper-plane text-lg ml-0.1"></i>
+                    </button>
+                </div>
+
+                <div id="attachment-menu" class="hidden-page absolute bottom-16 left-4 bg-white border border-gray-200 rounded-2xl shadow-xl p-3 flex flex-row space-x-3 items-center z-30 animate-fade-in">
+                    <button onclick="actionSendPhotoFromAlbum()" class="flex flex-col items-center justify-center p-2 text-center text-gray-500 hover:bg-gray-100 rounded-xl transition cursor-pointer">
+                        <span class="w-15 h-15 rounded-full bg-gray-100 text-grey-500 flex items-center justify-center text-xl shadow-xs mb-1">
+                            <i class="fas fa-camera fa-xl"></i>
+                        </span>
+                        <span class="text-xs font-medium text-gray-600">Kamera</span>
+                    </button>
+
+                    <button onclick="actionShareCurrentLocation()" class="flex flex-col items-center justify-center p-2 text-center text-gray-500 hover:bg-gray-100 rounded-xl transition cursor-pointer">
+                        <span class="w-15 h-15 rounded-full bg-gray-100 text-grey-500 flex items-center justify-center text-xl shadow-xs mb-1">
+                            <i class="fas fa-location-dot fa-xl"></i>
+                        </span>
+                        <span class="text-xs font-medium text-gray-600">Lokasi</span>
+                    </button>
+                </div>
+            </div>
+
+            <div id="page-discover" class="hidden-page p-2">
+                <div class="bg-green-50 border border-green-200 rounded-xl p-3 mb-3 flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-location-crosshairs text-green-600 animate-pulse text-sm"></i>
+                        <div>
+                            <p class="text-[11px] font-bold text-green-800"></p>
+                            <p id="gps-status-text" class="fas-fa-loading text-[9px] text-green-600 font-medium">Mencari pengguna...</p>
+                        </div>
+                    </div>
+                    <button id="btn-request-gps" onclick="triggerHighAccuracyLocation()" class="hidden-page text-[10px] font-semibold bg-green-600 text-white px-2.5 py-1 rounded-md shadow hover:bg-green-700 transition cursor-pointer flex items-center space-x-1">
+                        <i class="fas fa-location-arrow text-[9px]"></i>
+                        <span>Aktifkan Lokasi</span>
+                    </button>
+                </div>
+
+                <p class="text-xs font-semibold text-gray-500 px-2 py-1 uppercase tracking-wider">Pengguna Aktif Di Sekitar</p>
+                
+                <div id="nearby-users-list" class="space-y-1 mt-1">
+                    <div class="text-center py-12 text-xs text-gray-400">
+                        <i class="fas fa-spinner animate-spin text-lg mb-2 text-green-600"></i>
+                        <p>Mencari pengguna sekitar yang sedang aktif...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="page-user-profile" class="hidden-page flex flex-col items-center pt-8 px-4">
+                <div class="w-full flex justify-start mb-2">
+                    <button onclick="closeUserProfile()" class="text-gray-600 hover:text-green-600 cursor-pointer flex items-center space-x-1 text-sm font-semibold">
+                        <i class="fas fa-angle-left"></i>
+                    </button>
+                </div>
+
+                <div class="flex flex-col items-center mb-6 w-full text-center">
+                    <div class="relative">
+                        <img id="user-profile-avatar" src="" alt="Avatar Pengguna" class="w-24 h-24 rounded-full object-cover border-4 border-white shadow-md bg-gray-200">
+                        <div class="absolute bottom-1 right-1 bg-green-500 w-4 h-4 rounded-full border-2 border-white"></div>
+                    </div>
+                    <h2 id="user-profile-name" class="mt-3 text-lg font-bold text-gray-800 mb-0.5">---</h2>
+                    <p id="user-profile-id" class="text-xs text-gray-400 font-mono">ID: --</p>
+                    
+                    <div class="flex items-center space-x-2 mt-2">
+                        <div id="user-profile-gender-container"></div>
+                        <span id="user-profile-distance" class="text-[11px] font-mono font-bold text-green-700 bg-green-50 border border-green-200 px-2.5 py-0.5 rounded-full shadow-2xs">--</span>
+                    </div>
+
+                    <div class="w-full mt-4 flex justify-center">
+                        <button id="btn-start-chat" class="text-xs font-semibold bg-green-600 text-white px-6 py-2 rounded-full shadow hover:bg-green-700 transition active:scale-95 cursor-pointer flex items-center space-x-1.5">
+                            <i class="fas fa-paper-plane"></i>
+                            <span>Kirim Pesan</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="w-full">
+                    <div class="flex items-center justify-between border-b border-gray-100 pb-2 mb-3">
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-images text-green-600"></i>
+                            <h3 class="font-bold text-sm text-gray-700">Album Foto</h3>
+                        </div>
+                    </div>
+                    <div id="user-media-grid" class="grid grid-cols-3 gap-2"></div>
+                </div>
+            </div>
+
+            <div id="page-profile" class="hidden-page flex flex-col items-center pt-8 px-4">
+                <div class="flex flex-col items-center mb-6 w-full text-center">
+                    <div class="relative group">
+                        <div id="avatar-placeholder" class="w-24 h-24 rounded-full bg-gray-200 border-4 border-white shadow-md flex items-center justify-center text-gray-400 text-4xl">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <img id="profile-avatar" src="" alt="Avatar Saya" class="hidden-page w-24 h-24 rounded-full object-cover border-4 border-white shadow-md bg-gray-200">
+                        <div id="status-dot" class="hidden-page absolute bottom-1 right-1 bg-green-500 w-4 h-4 rounded-full border-2 border-white"></div>
+                        
+                        <button id="btn-edit-avatar" onclick="openCameraModal('edit_profile_avatar')" class="hidden-page absolute -bottom-1 -right-1 bg-green-600 text-white w-7 h-7 rounded-full flex items-center justify-center border border-white shadow hover:bg-green-700 transition cursor-pointer active:scale-95">
+                            <i class="fas fa-pencil text-xs"></i>
+                        </button>
+                    </div>
+                    <h2 id="profile-name" class="mt-3 text-lg font-bold text-gray-400 mb-0.5">Guest</h2>
+                    <p id="profile-id" class="text-xs text-gray-300 font-mono">ID: --</p>
+                    
+                    <div id="profile-gender-container" class="mt-1.5 min-h-[24px]">
+                        <p id="profile-gender" class="text-xs font-medium hidden-page"></p>
+                    </div>
+                </div>
+
+                <div class="w-full">
+                    <div class="flex items-center justify-between border-b border-gray-100 pb-2 mb-3">
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-images text-green-600"></i>
+                            <h3 class="font-bold text-sm text-gray-700">Album Foto</h3>
+                            <span id="album-mode-badge" class="hidden-page text-[9px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-semibold animate-pulse">Mode Edit</span>
+                        </div>
+                        
+                        <div id="album-edit-actions" class="hidden-page flex items-center space-x-3">
+                            <button onclick="exitAlbumEditMode()" class="text-xs text-gray-400 hover:text-gray-600 font-medium">Batal</button>
+                            <button onclick="deleteSelectedPhotos()" class="text-red-600 hover:text-red-800 p-1 cursor-pointer transition active:scale-95" title="Hapus foto terpilih">
+                                <i class="fas fa-trash-can text-base"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="media-grid" class="grid grid-cols-3 gap-2">
+                        <div class="col-span-3 text-center text-xs py-10 text-gray-400">
+                            Album foto masih kosong.
+                        </div>
+                    </div>
+                    <p id="album-hint" class="hidden-page text-[10px] text-gray-400 mt-2 text-center"><i class="fas fa-circle-info mr-1"></i>Tips: Tap lama pada foto untuk hapus foto dari album.</p>
+                </div>
+            </div>
+
+            <div id="page-login" class="hidden-page p-6">
+                <div class="mb-6 flex items-center">
+                    <button type="button" onclick="switchPage('profile')" class="p-2 text-gray-600 font-semibold rounded-lg hover:bg-gray-100 transition fas fa-chevron-left mr-3 text-lg"></button>
+                    <span class="text-base font-bold text-gray-800 tracking-wide">Masuk Ke Akun</span>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Alamat Email</label>
+                    <input type="email" id="login-email" placeholder="Masukkan email terdaftar" class="w-full text-sm bg-gray-50 border border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:border-green-600">
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Kata Sandi</label>
+                    <input type="password" id="login-password" placeholder="••••" class="w-full text-sm bg-gray-50 border border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:border-green-600">
+                </div>
+
+                <button type="button" id="btn-submit-login" onclick="submitLogin()" class="w-full text-sm font-semibold bg-green-600 text-white py-2.5 rounded-lg hover:bg-green-700 transition shadow-md tracking-wide">
+                    Masuk
+                </button>
+                
+                <p class="text-center text-xs text-gray-500 mt-4">Belum punya akun? <a href="#" onclick="switchPage('register')" class="text-green-600 font-semibold underline">Daftar disini</a></p>
+            </div>
+
+            <div id="page-register" class="hidden-page p-4">
+                <div class="mb-5 flex items-center justify-between">
+                    <button type="button" onclick="switchPage('profile')" class="p-2 text-gray-600 font-semibold rounded-lg hover:bg-gray-100 transition fas fa-chevron-left mr-1 text-lg"></button>
+                    <span class="text-base font-bold text-gray-800 tracking-wide">Buat Akun Baru</span>
+                    <span id="reg-generated-id" class="text-[11px] bg-gray-100 text-gray-600 font-mono px-2 py-1 rounded border border-gray-200">ID: Memeriksa...</span>
+                </div>
+
+                <div class="mb-5 bg-gray-50 p-3 rounded-xl border border-gray-200 flex flex-col items-center">
+                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2 text-center w-full">Foto Profil (Wajib)</label>
+                    <div class="relative w-28 h-28 bg-gray-200 rounded-full overflow-hidden border-2 border-green-500 flex items-center justify-center mb-3">
+                        <img id="preview-avatar" class="hidden-page w-full h-full object-cover">
+                        <i id="icon-avatar-placeholder" class="fas fa-camera text-gray-400 text-2xl"></i>
+                    </div>
+                    <button type="button" onclick="openCameraModal('avatar')" class="text-xs bg-green-600 text-white px-3 py-1.5 rounded-full shadow hover:bg-green-700 transition">
+                        <i class="fas fa-camera mr-1"></i> Ambil Foto
+                    </button>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Nama Lengkap</label>
+                    <input type="text" id="reg-name" placeholder="Masukkan nama Anda" class="w-full text-sm bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-green-600">
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1.5">Jenis Kelamin</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="flex items-center justify-center space-x-2 border border-gray-300 rounded-lg p-2.5 bg-gray-50 cursor-pointer hover:bg-gray-100 transition has-[:checked]:border-green-600 has-[:checked]:bg-green-50 has-[:checked]:text-green-700">
+                            <input type="radio" name="reg-gender" value="Laki-laki" class="accent-green-600">
+                            <i class="fas fa-mars text-blue-500 text-sm"></i>
+                            <span class="text-sm font-semibold">Laki-laki</span>
+                        </label>
+                        <label class="flex items-center justify-center space-x-2 border border-gray-300 rounded-lg p-2.5 bg-gray-50 cursor-pointer hover:bg-gray-100 transition has-[:checked]:border-green-600 has-[:checked]:bg-green-50 has-[:checked]:text-green-700">
+                            <input type="radio" name="reg-gender" value="Perempuan" class="accent-green-600">
+                            <i class="fas fa-venus text-pink-500 text-sm"></i>
+                            <span class="text-sm font-semibold">Perempuan</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="mb-4 bg-gray-50 p-3 rounded-xl border border-gray-200">
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Alamat Email</label>
+                    <div class="flex space-x-2 mb-2">
+                        <input type="email" id="reg-email" placeholder="contoh@gmail.com" class="flex-1 text-sm bg-white border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-green-600">
+                        <button type="button" id="btn-send-otp" onclick="requestOtpToEmail()" class="text-xs bg-green-600 text-white px-3 py-2 rounded-lg font-semibold hover:bg-green-700 transition disabled:bg-gray-400 whitespace-nowrap">
+                            Kirim OTP
+                        </button>
+                    </div>
+
+                    <div id="wrapper-otp-input" class="hidden-page mt-3 border-t border-gray-200 pt-3">
+                        <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Masukkan 5 Digit OTP</label>
+                        <input type="text" id="reg-otp" maxlength="5" placeholder="• • • • •" class="w-full tracking-widest text-center text-sm font-bold bg-white border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-green-600">
+                        <p class="text-[10px] text-gray-500 mt-1"><i class="fas fa-info-circle mr-1"></i>Silakan periksa kotak masuk.</p>
+                    </div>
+                </div>
+
+                <div class="mb-4 bg-gray-50 p-3 rounded-xl border border-gray-200">
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="block text-xs font-bold text-gray-600 uppercase tracking-wider">Album Foto (Wajib Minimal 1)</label>
+                    </div>
+                    <div id="preview-album-grid" class="grid grid-cols-4 gap-2 min-h-[80px] p-1 items-center"></div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 mb-5">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Kata Sandi</label>
+                        <input type="password" id="reg-password" placeholder="••••" class="w-full text-sm bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-green-600">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Konfirmasi Sandi</label>
+                        <input type="password" id="reg-confirm-password" placeholder="••••" class="w-full text-sm bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-green-600">
+                    </div>
+                </div>
+
+                <div class="flex space-x-3 mb-4">
+                    <button type="button" id="btn-submit-reg" onclick="submitRegistration()" class="w-full text-sm font-semibold bg-green-600 text-white py-2.5 rounded-lg hover:bg-green-700 transition shadow-md tracking-wide">Daftar</button>
+                </div>
+            </div>
+
+        </div>
+
+        <div id="camera-modal" class="hidden-page absolute inset-0 bg-black/90 z-50 flex flex-col justify-between p-4">
+            <div class="flex justify-between items-center text-white">
+                <span id="camera-mode-title" class="text-xs font-bold uppercase tracking-wider text-green-400">Kamera</span>
+                <button onclick="closeCameraModal()" class="text-white hover:text-red-400 text-lg p-2"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="relative flex-1 flex items-center justify-center overflow-hidden my-4 bg-gray-950 rounded-lg">
+                <video id="camera-stream" autoplay playsinline class="w-full h-full object-cover"></video>
+                <canvas id="camera-canvas" class="hidden"></canvas>
+            </div>
+            <div class="flex flex-col items-center space-y-4">
+                <div class="w-full flex justify-around items-center pb-4">
+                    <button onclick="flipCamera()" class="text-white text-xl p-3 bg-gray-800 rounded-full hover:bg-gray-700"><i class="fas fa-camera-rotate"></i></button>
+                    <button id="btn-shutter" onclick="captureMedia()" class="w-16 h-16 bg-white rounded-full border-4 border-gray-400 active:scale-95 transition flex items-center justify-center">
+                        <div id="shutter-inner" class="w-12 h-12 bg-green-600 rounded-full"></div>
+                    </button>
+                    <div class="w-12"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="map-modal" class="hidden-page absolute inset-0 bg-white z-50 flex flex-col">
+            <div class="bg-green-600 text-white px-4 py-3 flex items-center shadow-md">
+                <button onclick="closeMapModal()" class="text-white mr-3 cursor-pointer"><i class="fas fa-arrow-left text-lg"></i></button>
+                <h2 class="font-bold text-sm">MiClone</h2>
+            </div>
+            <div id="fullscreen-map-container" class="flex-1 w-full h-full"></div>
+        </div>
+
+                <!-- EDIT BAGIAN NAV-CHAT DI DALAM #BOTTOM-NAV -->
+        <div id="bottom-nav" class="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around py-2 text-gray-500 shadow-lg z-10">
+            <button id="nav-chat" onclick="switchPage('chat')" class="flex flex-col items-center justify-center w-16 relative cursor-pointer">
+                <i class="fas fa-comment-dots text-xl"></i>
+                <span class="text-[10px] mt-0.5 font-medium">Chat</span>
+                <!-- BADGE NAVIGASI CHAT BARU -->
+                <span id="nav-chat-badge" class="hidden-page absolute top-1 right-3 bg-red-500 text-white text-[9px] font-bold rounded-full h-4 w-4 flex items-center justify-center animate-bounce">0</span>
+            </button>
+            <button id="nav-discover" onclick="switchPage('discover')" class="flex flex-col items-center justify-center w-16 hover:text-green-600 relative cursor-pointer">
+                <i class="fas fa-compass text-xl"></i>
+                <span class="text-[10px] mt-0.5 font-medium">Temukan</span>
+                <span class="absolute top-1 right-4 bg-red-500 w-2 h-2 rounded-full animate-ping"></span>
+            </button>
+            <button id="nav-contacts" onclick="switchPage('contacts')" class="flex flex-col items-center justify-center w-16 hover:text-green-600 cursor-pointer">
+                <i class="fas fa-address-book text-xl"></i>
+                <span class="text-[10px] mt-0.5 font-medium">Kontak</span>
+            </button>
+            <button id="nav-profile" onclick="switchPage('profile')" class="flex flex-col items-center justify-center w-16 hover:text-green-600 cursor-pointer">
+                <i class="fas fa-user text-xl"></i>
+                <span class="text-[10px] mt-0.5 font-medium">Saya</span>
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        const SPREADSHEET_API_URL = 'https://script.google.com/macros/s/AKfycbxdV9Pv1TxDYbCGxHi3DFfFQwJsNsp0aLhp-4Y_Yp4eGPBTijiNbrU1HMHvB7iIC9RW/exec';
+        
+        let isLoggedIn = false;
+        let activeUserId = ""; 
+        let currentPage = 'chat';
+        
+        let generatedID = "";
+        let currentFacingMode = "user"; 
+        let localStream = null;
+        let cameraTarget = ""; 
+
+        let capturedAvatarData = null;
+        let capturedAlbumList = [];
+        
+        let isAlbumEditMode = false;
+        let currentLoadedMediaList = [];
+
+        let currentLatitude = null;
+        let currentLongitude = null;
+        let watchPositionId = null;
+
+        let activeChatTargetId = "";
+        let activeChatTargetName = "";
+        let chatIntervalId = null;
+        let globalLeafletMap = null;
+
+        // STATE BARU: Untuk menyimpan data riwayat chat asli agar bisa disaring secara lokal
+        let originalChatHistoryData = [];
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedLoginStatus = localStorage.getItem("isLoggedIn");
+            const savedUserId = localStorage.getItem("activeUserId");
+            const savedLastPage = localStorage.getItem("lastActivePage");
+
+            if (savedLoginStatus === "true" && savedUserId) {
+                isLoggedIn = true;
+                activeUserId = savedUserId;
+            }
+
+            const targetPage = savedLastPage ? savedLastPage : 'chat';
+            switchPage(targetPage);
+            
+            if (isLoggedIn) {
+                initBackgroundGeolocation();
+            }
+        });
+
+        function switchPage(pageName) {
+            currentPage = pageName;
+            exitAlbumEditMode();
+            closeAttachmentMenu(); 
+            hideSearchBar(); // Sembunyikan search bar setiap kali berganti halaman
+            
+            if (pageName !== 'chat-room' && chatIntervalId) {
+                clearInterval(chatIntervalId);
+                chatIntervalId = null;
+            }
+            
+            if (pageName !== 'login' && pageName !== 'register' && pageName !== 'user-profile' && pageName !== 'chat-room') {
+                localStorage.setItem("lastActivePage", pageName);
+            }
+            
+            document.getElementById('page-chat').classList.add('hidden-page');
+            document.getElementById('page-chat-room').classList.add('hidden-page');
+            document.getElementById('page-discover').classList.add('hidden-page');
+            document.getElementById('page-profile').classList.add('hidden-page');
+            document.getElementById('page-user-profile').classList.add('hidden-page');
+            document.getElementById('page-register').classList.add('hidden-page');
+            document.getElementById('page-login').classList.add('hidden-page');
+            
+            const headerTitle = document.getElementById('header-title');
+            const btnSearch = document.getElementById('btn-search');
+            const authGroup = document.getElementById('auth-group');
+            const btnLogout = document.getElementById('btn-logout');
+            const mainHeader = document.getElementById('main-header');
+            const chatRoomHeader = document.getElementById('chat-room-header');
+            const bottomNav = document.getElementById('bottom-nav');
+            const btnBackProfile = document.getElementById('btn-back-profile');
+            
+            document.querySelectorAll('[id^="nav-"]').forEach(btn => {
+                btn.classList.remove('text-green-600');
+                btn.classList.add('text-gray-500');
+            });
+
+            if (pageName !== 'user-profile') {
+                btnBackProfile.classList.add('hidden-page');
+            }
+
+            if (pageName === 'register' || pageName === 'login') {
+                mainHeader.classList.add('hidden'); 
+                chatRoomHeader.classList.add('hidden-page');
+                bottomNav.classList.add('hidden');  
+                
+                if (pageName === 'register') {
+                    document.getElementById('page-register').classList.remove('hidden-page');
+                    prepareRegistrationForm();
+                } else {
+                    document.getElementById('page-login').classList.remove('hidden-page');
+                    document.getElementById('login-email').value = "";
+                    document.getElementById('login-password').value = "";
+                }
+            } else {
+                if (pageName === 'discover') {
+                    mainHeader.classList.add('hidden');
+                    chatRoomHeader.classList.add('hidden-page');
+                    bottomNav.classList.remove('hidden');
+                } else if (pageName === 'user-profile') {
+                    mainHeader.classList.add('hidden');
+                    chatRoomHeader.classList.add('hidden-page');
+                    bottomNav.classList.add('hidden');
+                } else if (pageName === 'chat-room') {
+                    mainHeader.classList.add('hidden');
+                    chatRoomHeader.classList.remove('hidden-page');
+                    bottomNav.classList.add('hidden');
+                } else {
+                    mainHeader.classList.remove('hidden');
+                    chatRoomHeader.classList.add('hidden-page');
+                    bottomNav.classList.remove('hidden');
+                }
+
+                if (pageName === 'chat') {
+                    document.getElementById('page-chat').classList.remove('hidden-page');
+                    document.getElementById('nav-chat').classList.add('text-green-600');
+                    headerTitle.innerText = "MiClone";
+                    btnSearch.classList.remove('hidden-page');
+                    authGroup.classList.add('hidden-page');
+                    btnLogout.classList.add('hidden-page');
+                    loadChatHistoryList();
+                } 
+                else if (pageName === 'chat-room') {
+                    document.getElementById('page-chat-room').classList.remove('hidden-page');
+                }
+                else if (pageName === 'discover') {
+                    document.getElementById('page-discover').classList.remove('hidden-page');
+                    document.getElementById('nav-discover').classList.add('text-green-600');
+                    headerTitle.innerText = "Temukan";
+                    btnSearch.classList.add('hidden-page');
+                    authGroup.classList.add('hidden-page');
+                    btnLogout.classList.add('hidden-page');
+                    triggerHighAccuracyLocation();
+
+                    if (window.discoverIntervalId) clearInterval(window.discoverIntervalId);
+                    window.discoverIntervalId = setInterval(fetchNearbyUsersFromServer, 30000);
+                }
+                else if (pageName === 'user-profile') {
+                    document.getElementById('page-user-profile').classList.remove('hidden-page');
+                    document.getElementById('nav-discover').classList.add('text-green-600');
+                    btnBackProfile.classList.remove('hidden-page');
+                    btnSearch.classList.add('hidden-page');
+                    authGroup.classList.add('hidden-page');
+                    btnLogout.classList.add('hidden-page');
+                }
+                else if (pageName === 'profile') {
+                    document.getElementById('page-profile').classList.remove('hidden-page');
+                    document.getElementById('nav-profile').classList.add('text-green-600');
+                    headerTitle.innerText = "Profil Saya";
+                    btnSearch.classList.add('hidden-page');
+                    
+                    if (!isLoggedIn) {
+                        authGroup.classList.remove('hidden-page');
+                        btnLogout.classList.add('hidden-page');
+                        document.getElementById('btn-edit-avatar').classList.add('hidden-page');
+                        resetToDefaultView();
+                    } else {
+                        authGroup.classList.add('hidden-page');
+                        btnLogout.classList.remove('hidden-page');
+                        document.getElementById('btn-edit-avatar').classList.remove('hidden-page');
+                        loadDataFromGoogleSheets();
+                    }
+                }
+            }
+        }
+
+        // LOGIKA BARU: LOGIKA KONTROL SEARCH BAR
+        function toggleSearchBar() {
+            if (currentPage !== 'chat') return; // Hanya berfungsi di halaman utama Chat
+            const searchContainer = document.getElementById('search-bar-container');
+            if (searchContainer.classList.contains('hidden-page')) {
+                searchContainer.classList.remove('hidden-page');
+                document.getElementById('chat-search-input').focus();
+            } else {
+                hideSearchBar();
+            }
+        }
+
+        function hideSearchBar() {
+            const searchContainer = document.getElementById('search-bar-container');
+            if (searchContainer) searchContainer.classList.add('hidden-page');
+            clearSearchInput();
+        }
+
+        function clearSearchInput() {
+            const searchInput = document.getElementById('chat-search-input');
+            if (searchInput) {
+                searchInput.value = "";
+                filterChatHistory(); // Reset filter tampilan list chat
+            }
+        }
+
+        function filterChatHistory() {
+            const keyword = document.getElementById('chat-search-input').value.toLowerCase().trim();
+            
+            // Jika kolom pencarian kosong, render data riwayat chat asli yang disimpan
+            if (!keyword) {
+                renderChatHistoryList(originalChatHistoryData);
+                return;
+            }
+
+            // Saring berdasarkan nama atau id_user
+            const filteredData = originalChatHistoryData.filter(item => {
+                const matchName = item.chat.nama ? item.chat.nama.toLowerCase().includes(keyword) : false;
+                const matchId = item.chat.id_user ? item.chat.id_user.toLowerCase().includes(keyword) : false;
+                return matchName || matchId;
+            });
+
+            renderChatHistoryList(filteredData);
+        }
+
+        function loadChatHistoryList() {
+            const container = document.getElementById('chat-history-list');
+            if (!isLoggedIn) {
+                container.innerHTML = `
+                    <div class="text-center py-12 text-xs text-gray-500 bg-gray-50 rounded-xl p-4">
+                        <i class="fas fa-lock text-2xl mb-2 text-gray-300"></i>
+                        <p class="font-bold">Akses Terbatas</p>
+                        <p class="mt-1">Silakan masuk ke akun/daftar terlebih dahulu untuk mengobrol dengan pengguna lain.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="text-center py-12 text-xs text-gray-400">
+                    <i class="fas fa-spinner animate-spin text-green-600 mb-1 text-base"></i>
+                    <p>Memuat kontak masuk pesan...</p>
+                </div>
+            `;
+
+            fetch(`${SPREADSHEET_API_URL}?action=get_chat_history&id_user=${activeUserId}`)
+                .then(res => res.json())
+                .then(response => {
+                    if (response.status === "SUCCESS" && response.data.length > 0) {
+                        const promises = response.data.map(chat => {
+                            return fetch(`${SPREADSHEET_API_URL}?action=get_profile&id=${chat.id_user}`)
+                                .then(res => res.json())
+                                .then(profileData => {
+                                    let statusDotColor = "bg-gray-400"; 
+                                    if (profileData && profileData.last_seen_raw) {
+                                        const now = new Date().getTime();
+                                        const activeThreshold = 3 * 60 * 1000; 
+                                        if (now - profileData.last_seen_raw <= activeThreshold) {
+                                            statusDotColor = "bg-green-500"; 
+                                        }
+                                    }
+                                    return { chat, statusDotColor };
+                                })
+                                .catch(() => {
+                                    return { chat, statusDotColor: "bg-gray-400" };
+                                });
+                        });
+
+                        Promise.all(promises).then(results => {
+                            // LOGIKA BARU: Simpan data mentah asli ke state global agar pencarian bisa dinonaktifkan/diaktifkan tanpa fetch ulang API
+                            originalChatHistoryData = results;
+                            
+                            // Jalankan penyaringan (mengantisipasi jika user mengetik sebelum proses load selesai)
+                            filterChatHistory();
+                        });
+                    } else {
+                        originalChatHistoryData = [];
+                        container.innerHTML = `
+                            <div class="text-center py-12 text-xs text-gray-400 rounded-xl">
+                                <i class="fas fa-comment-slash text-2xl mb-2 text-gray-300"></i>
+                                <p>Belum ada obrolan aktif.</p>
+                            </div>
+                        `;
+                    }
+                })
+                .catch(() => {
+                    container.innerHTML = `<div class="text-center py-10 text-xs text-gray-400">Gagal menyinkronkan kontak masuk.</div>`;
+                });
+        }
+
+               function renderChatHistoryList(dataArray) {
+            const container = document.getElementById('chat-history-list');
+            container.innerHTML = '';
+
+            if (dataArray.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-12 text-xs text-gray-400 bg-white border border-gray-100 rounded-xl">
+                        <i class="fas fa-search-minus text-2xl mb-2 text-gray-300"></i>
+                        <p>Pengguna tidak ditemukan.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Hitung total pengguna unik yang mengirimkan pesan belum terbaca untuk navigasi bawah
+            let totalUsersSendingUnread = 0;
+
+            dataArray.forEach(({ chat, statusDotColor }) => {
+                let cleanDisplayMsg = chat.last_message;
+                if (chat.last_message.startsWith('[IMAGE]')) {
+                    cleanDisplayMsg = "🖼 FOTO";
+                } else if (chat.last_message.startsWith('[LOCATION]')) {
+                    cleanDisplayMsg = "📍 LOKASI";
+                }
+
+                // Logika Badge Unread tiap user profil
+                let unreadBadgeHTML = '';
+                if (chat.unread_count && chat.unread_count > 0) {
+                    totalUsersSendingUnread++; // Tambah total user unik
+                    unreadBadgeHTML = `
+                        <span class="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-4 text-center ml-2 shadow-sm animate-pulse">
+                            ${chat.unread_count}
+                        </span>
+                    `;
+                }
+
+                const card = document.createElement('div');
+                card.className = "flex items-center p-3 hover:bg-gray-50 rounded-xl cursor-pointer transition border-b border-gray-100 bg-white shadow-xs mb-1";
+                card.innerHTML = `
+                    <div class="relative mr-3 flex-shrink-0">
+                        <img src="${chat.avatar_url || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150'}" class="w-11 h-11 rounded-full object-cover border border-gray-200" referrerpolicy="no-referrer">
+                        <div class="absolute bottom-0 right-0 ${statusDotColor} w-3 h-3 rounded-full border-2 border-white shadow-xs"></div>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex justify-between items-baseline mb-0.5">
+                            <h3 class="font-bold text-gray-800 text-sm truncate">${chat.nama}</h3>
+                            <span class="text-[9px] text-gray-400 font-mono">${chat.last_time}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <p class="text-xs text-gray-500 truncate mr-2 ${chat.unread_count > 0 ? 'font-bold text-gray-900' : ''}">${cleanDisplayMsg}</p>
+                            <div class="flex items-center space-x-1 flex-shrink-0">
+                                ${unreadBadgeHTML}
+                                <span class="text-[9px] text-gray-300 font-mono">ID: ${chat.id_user}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                card.onclick = () => openChatRoom(chat.id_user, chat.nama, chat.avatar_url);
+                container.appendChild(card);
+            });
+
+            // Update Badge Navigasi Chat Utama di bagian bawah layar
+            const navBadge = document.getElementById('nav-chat-badge');
+            if (navBadge) {
+                if (totalUsersSendingUnread > 0) {
+                    navBadge.innerText = totalUsersSendingUnread;
+                    navBadge.classList.remove('hidden-page');
+                } else {
+                    navBadge.classList.add('hidden-page');
+                }
+            }
+        }
+
+        function toggleAttachmentMenu() {
+            const menu = document.getElementById('attachment-menu');
+            const icon = document.getElementById('attachment-icon');
+            if (menu.classList.contains('hidden-page')) {
+                menu.classList.remove('hidden-page');
+                icon.className = "fas fa-times text-sm text-red-500 rotate-45 transition-transform duration-200";
+            } else {
+                closeAttachmentMenu();
+            }
+        }
+
+        function closeAttachmentMenu() {
+            const menu = document.getElementById('attachment-menu');
+            const icon = document.getElementById('attachment-icon');
+            if(menu) menu.classList.add('hidden-page');
+            if(icon) icon.className = "fas fa-plus text-sm text-gray-600 transition-transform duration-200";
+        }
+
+        function actionSendPhotoFromAlbum() {
+            closeAttachmentMenu();
+            openCameraModal('profile_add_album');
+        }
+
+        function actionShareCurrentLocation() {
+            closeAttachmentMenu();
+            if (currentLatitude === null || currentLongitude === null) {
+                alert("Gagal mendapatkan lokasi GPS Anda. Pastikan izin lokasi aktif.");
+                return;
+            }
+            const locationText = `[LOCATION]${currentLatitude},${currentLongitude}`;
+            document.getElementById('chat-input-message').value = locationText;
+            sendChatMessage();
+        }
+
+                function openChatRoom(targetId, targetName, targetAvatar) {
+            if (!isLoggedIn) {
+                alert("Silakan masuk/daftar akun terlebih dahulu untuk bertukar pesan!");
+                switchPage('profile');
+                return;
+            }
+            activeChatTargetId = targetId;
+            activeChatTargetName = targetName;
+            
+            document.getElementById('chat-room-target-name').innerText = targetName;
+            document.getElementById('chat-room-target-status').innerHTML = `<span class="text-gray-300"></span>`;
+            document.getElementById('chat-room-avatar').src = targetAvatar || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150';
+            
+            document.getElementById('chat-messages-container').innerHTML = `
+                <div class="text-center py-6 text-xs text-gray-400">
+                    <i class="fas fa-spinner animate-spin mr-1"></i> Membuka ruang pesan...
+                </div>
+            `;
+            
+            switchPage('chat-room');
+            fetchChatMessages();
+            fetchTargetPresenceStatus(); 
+
+            // LOGIKA BARU: Otomatis kirim sinyal ke server untuk menghapus badge (mark as read)
+            fetch(SPREADSHEET_API_URL, {
+        method: 'POST',
+        mode: 'no-cors', // Menghindari pemblokiran kebijakan browser
+        headers: {
+            'Content-Type': 'text/plain'
+        },
+        body: JSON.stringify({
+            action: "mark_as_read",
+            my_id: String(activeUserId).trim(),       // Pastikan tipe data string bersih
+            partner_id: String(targetId).trim()      // Pastikan tipe data string bersih
+        })
+    }).then(() => {
+        // Secara lokal langsung kosongkan badge pada UI riwayat chat agar responsif
+        if (typeof originalChatHistoryData !== 'undefined' && originalChatHistoryData !== null) {
+            const foundIndex = originalChatHistoryData.findIndex(item => String(item.chat.id_user).trim() === String(targetId).trim());
+            if (foundIndex !== -1) {
+                originalChatHistoryData[foundIndex].chat.unread_count = 0;
+                renderChatHistoryList(originalChatHistoryData);
+            }
+        }
+    }).catch(e => console.log("Gagal mengupdate status read:", e));
+    
+    // Pembersihan interval lama jika ada
+    if (chatIntervalId) clearInterval(chatIntervalId);
+
+    chatIntervalId = setInterval(() => {
+        fetchChatMessages();
+        fetchTargetPresenceStatus();
+    }, 4000);
+}
+
+        function fetchTargetPresenceStatus() {
+            if (currentPage !== 'chat-room' || !activeChatTargetId) return;
+
+            fetch(`${SPREADSHEET_API_URL}?action=get_profile&id=${activeChatTargetId}`)
+                .then(res => res.json())
+                .then(data => {
+                    const statusTextEl = document.getElementById('chat-room-target-status');
+                    if (data && data.last_seen_raw) {
+                        const now = new Date().getTime();
+                        const activeThreshold = 3 * 60 * 1000; 
+                        
+                        if (now - data.last_seen_raw <= activeThreshold) {
+                            statusTextEl.innerHTML = `<span class="text-white font-bold animate-pulse">● Online</span>`;
+                        } else {
+                            statusTextEl.innerHTML = `Terakhir online ${data.last_seen_time || '--:--'}`;
+                        }
+                    } else {
+                        statusTextEl.innerText = "Offline";
+                    }
+                })
+                .catch(() => {
+                    document.getElementById('chat-room-target-status').innerText = "";
+                });
+        }
+
+        function fetchChatMessages() {
+            if (currentPage !== 'chat-room' || !activeUserId || !activeChatTargetId) return;
+
+            fetch(`${SPREADSHEET_API_URL}?action=get_chat_messages&sender_id=${activeUserId}&receiver_id=${activeChatTargetId}`)
+                .then(res => res.json())
+                .then(response => {
+                    if (response.status === "SUCCESS") {
+                        renderChatMessages(response.data);
+                    }
+                })
+                .catch(err => console.error("Gagal melakukan polling data obrolan baru."));
+        }
+
+        function renderChatMessages(messagesArray) {
+            const container = document.getElementById('chat-messages-container');
+            const isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 100;
+            
+            container.innerHTML = '';
+            if (messagesArray.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8 text-xs text-gray-400">
+                        <i class="fas fa-hand-wave text-lg mb-1 text-yellow-500"></i>
+                        <p>Katakan Halo ke <b>${activeChatTargetName}</b>! Ketik pesan di bawah untuk memulai percakapan.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            messagesArray.forEach(msg => {
+                const div = document.createElement('div');
+                const isMe = msg.sender_id === activeUserId;
+                let bubbleContent = '';
+
+                if (msg.message.startsWith('[IMAGE]')) {
+                    const imageUrl = msg.message.replace('[IMAGE]', '').trim();
+                    bubbleContent = `
+                        <div class="rounded-xl overflow-hidden shadow-xs border border-black/10 bg-gray-200 max-w-[220px] cursor-pointer" onclick="window.open('${imageUrl}', '_blank')">
+                            <img src="${imageUrl}" class="w-full h-auto object-cover max-h-60" referrerpolicy="no-referrer" alt="Gambar Terkirim">
+                        </div>
+                    `;
+                } 
+                else if (msg.message.startsWith('[LOCATION]')) {
+                    const coords = msg.message.replace('[LOCATION]', '').trim().split(',');
+                    const lat = parseFloat(coords[0]);
+                    const lng = parseFloat(coords[1]);
+                    
+                    bubbleContent = `
+                        <div class="rounded-xl overflow-hidden border border-gray-300 bg-white p-1 max-w-[240px] shadow-sm cursor-pointer" onclick="openMapFullscreen(${lat}, ${lng})">
+                            <div class="relative w-full h-[120px] bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
+                                <img src="https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/pin-s+ff0000(${lng},${lat})/${lng},${lat},14/240x120?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTAwM2YycW9hcm9hdW9xejIifQ" 
+                                     class="w-full h-full object-cover" 
+                                     onerror="this.onerror=null; this.src='https://static-maps.yandex.ru/1.x/?ll=${lng},${lat}&z=14&size=240,120&l=map&pt=${lng},${lat},pm2rdm';">
+                                <div class="absolute bottom-1 right-1 bg-black/60 text-white font-sans text-[9px] px-1.5 py-0.5 rounded-md flex items-center space-x-1">
+                                    <i class="fas fa-expand-alt"></i> <span>Ketuk untuk melihat lokasi</span>
+                                </div>
+                            </div>
+                            <p class="text-[11px] text-gray-700 font-medium px-1 py-1 truncate"><i class="fas fa-location-dot text-red-500 mr-1"></i> Lokasi Terkini</p>
+                        </div>
+                    `;
+                } 
+                else {
+                    const cleanMessage = msg.message.replace(/\n/g, '<br>');
+                    bubbleContent = `<p class="text-sm leading-relaxed break-words">${cleanMessage}</p>`;
+                }
+
+                if (isMe) {
+                    div.className = "flex justify-end";
+                    div.innerHTML = `
+                        <div class="max-w-[75%] bg-green-600 text-white rounded-2xl rounded-tr-none px-3.5 py-2 shadow-xs flex flex-col items-end">
+                            <div class="text-left w-full">${bubbleContent}</div>
+                            <p class="text-[9px] text-green-200 mt-1 font-mono">${msg.time}</p>
+                        </div>
+                    `;
+                } else {
+                    div.className = "flex justify-start";
+                    div.innerHTML = `
+                        <div class="max-w-[75%] bg-white text-gray-800 rounded-2xl rounded-tl-none px-3.5 py-2 shadow-xs border border-gray-200 flex flex-col items-start">
+                            <div class="text-left w-full">${bubbleContent}</div>
+                            <p class="text-[9px] text-gray-400 mt-1 font-mono">${msg.time}</p>
+                        </div>
+                    `;
+                }
+                container.appendChild(div);
+            });
+
+            if (isAtBottom) {
+                container.scrollTop = container.scrollHeight;
+            }
+        }
+
+        function openMapFullscreen(lat, lng) {
+            document.getElementById('map-modal').classList.remove('hidden-page');
+            setTimeout(() => {
+                if (globalLeafletMap) {
+                    globalLeafletMap.remove();
+                }
+                globalLeafletMap = L.map('fullscreen-map-container').setView([lat, lng], 16);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(globalLeafletMap);
+                L.marker([lat, lng]).addTo(globalLeafletMap)
+                    .bindPopup('<b>Lokasi Terkini</b><br>Koordinat: ' + lat + ', ' + lng)
+                    .openPopup();
+            }, 100);
+        }
+
+        function closeMapModal() {
+            document.getElementById('map-modal').classList.add('hidden-page');
+            if (globalLeafletMap) {
+                globalLeafletMap.remove();
+                globalLeafletMap = null;
+            }
+        }
+
+                function sendChatMessage() {
+            const inputEl = document.getElementById('chat-input-message');
+            const text = inputEl.value.trim();
+            if (!text) return;
+
+            // Ambil elemen tombol kirim dan simpan isi aslinya
+            const sendBtn = document.querySelector("button[onclick='sendChatMessage()']");
+            const originalBtnContent = sendBtn.innerHTML;
+
+            // Nonaktifkan input & tombol, ubah ikon menjadi spinner loading
+            inputEl.disabled = true;
+            sendBtn.disabled = true;
+            sendBtn.innerHTML = `<i class="fas fa-spinner animate-spin text-lg"></i>`;
+
+            const payload = {
+                action: "send_message",
+                sender_id: activeUserId,
+                receiver_id: activeChatTargetId,
+                message: text
+            };
+
+            fetch(SPREADSHEET_API_URL, {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(resData => {
+                if (resData.status === "SUCCESS") {
+                    inputEl.value = ""; // Kosongkan input hanya jika sukses terkirim
+                    fetchChatMessages(); 
+                } else {
+                    alert("Gagal mengirim: " + resData.message);
+                }
+            })
+            .catch(() => alert("Koneksi gagal mengirimkan teks pesan."))
+            .finally(() => {
+                // Kembalikan status input dan tombol kirim seperti semula setelah selesai proses
+                inputEl.disabled = false;
+                sendBtn.disabled = false;
+                sendBtn.innerHTML = originalBtnContent;
+                
+                // Berikan fokus kembali ke kolom input chat
+                inputEl.focus();
+            });
+        }
+
+        function openUserProfile(userId, userName, userAvatar, distanceText, gender) {
+            const headerTitle = document.getElementById('header-title');
+            headerTitle.innerText = "Profil Pengguna";
+            
+            switchPage('user-profile');
+
+            document.getElementById('user-profile-name').innerText = userName;
+            document.getElementById('user-profile-id').innerText = "ID: " + userId;
+            document.getElementById('user-profile-avatar').src = userAvatar || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150';
+            document.getElementById('user-profile-distance').innerHTML = `<i class="fas fa-location-arrow text-[10px] mr-1"></i>${distanceText}`;
+
+            document.getElementById('btn-start-chat').onclick = () => {
+                openChatRoom(userId, userName, userAvatar);
+            };
+
+            const genderContainer = document.getElementById('user-profile-gender-container');
+            if (gender === "Laki-laki") {
+                genderContainer.innerHTML = `<span class="bg-blue-50 text-blue-600 border border-blue-200 px-3 py-0.5 rounded-full text-[11px] font-semibold inline-flex items-center"><i class="fas fa-mars mr-1 text-blue-500"></i> Laki-laki</span>`;
+            } else if (gender === "Perempuan") {
+                genderContainer.innerHTML = `<span class="bg-pink-50 text-pink-600 border border-pink-200 px-3 py-0.5 rounded-full text-[11px] font-semibold inline-flex items-center"><i class="fas fa-venus mr-1 text-pink-500"></i> Perempuan</span>`;
+            } else {
+                genderContainer.innerHTML = "";
+            }
+
+            const mediaGrid = document.getElementById('user-media-grid');
+            mediaGrid.innerHTML = `
+                <div class="col-span-3 text-center text-xs py-10 text-gray-400">
+                    <i class="fas fa-spinner animate-spin mr-2"></i> Memuat album foto...
+                </div>
+            `;
+
+            fetch(`${SPREADSHEET_API_URL}?action=get_profile&id=${userId}`)
+                .then(res => res.json())
+                .then(data => {
+                    mediaGrid.innerHTML = '';
+                    if (data && data.media && data.media.length > 0) {
+                        data.media.forEach(item => {
+                            const div = document.createElement('div');
+                            div.className = 'aspect-square w-full bg-gray-100 rounded overflow-hidden shadow-sm cursor-pointer shadow-xs';
+                            div.innerHTML = `<img src="${item.url}" class="w-full h-full object-cover" referrerpolicy="no-referrer">`;
+                            div.onclick = () => window.open(item.url, '_blank');
+                            mediaGrid.appendChild(div);
+                        });
+                    } else {
+                        mediaGrid.innerHTML = `<div class="col-span-3 text-center text-xs py-10 text-gray-400">Pengguna tidak memiliki foto di dalam album.</div>`;
+                    }
+                })
+                .catch(() => {
+                    mediaGrid.innerHTML = `<div class="col-span-3 text-center text-xs py-10 text-gray-400">Gagal memuat album foto.</div>`;
+                });
+        }
+
+        function closeUserProfile() {
+            switchPage('discover');
+        }
+
+        function initBackgroundGeolocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition((position) => {
+                    currentLatitude = position.coords.latitude;
+                    currentLongitude = position.coords.longitude;
+                    sendLocationToBackend(currentLatitude, currentLongitude);
+                });
+
+                if (window.locationHeartbeatId) clearInterval(window.locationHeartbeatId);
+                
+                window.locationHeartbeatId = setInterval(() => {
+                    navigator.geolocation.getCurrentPosition((position) => {
+                        currentLatitude = position.coords.latitude;
+                        currentLongitude = position.coords.longitude;
+                        sendLocationToBackend(currentLatitude, currentLongitude);
+                    }, (err) => console.warn(err), { enableHighAccuracy: true });
+                }, 60000); 
+
+                watchPositionId = navigator.geolocation.watchPosition(
+                    (position) => {
+                        currentLatitude = position.coords.latitude;
+                        currentLongitude = position.coords.longitude;
+                    },
+                    (error) => { console.warn("Peringatan GPS Background:", error.message); },
+                    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+                );
+            }
+        }
+
+        function triggerHighAccuracyLocation() {
+            const btnRequestGps = document.getElementById('btn-request-gps');
+            
+            if (!isLoggedIn) {
+                document.getElementById('nearby-users-list').innerHTML = `
+                    <div class="text-center py-12 text-xs text-gray-500 bg-gray-50 rounded-xl p-4">
+                        <i class="fas fa-lock text-2xl mb-2 text-gray-300"></i>
+                        <p class="font-bold">Akses Terbatas</p>
+                        <p class="mt-1">Silakan masuk atau daftar akun terlebih dahulu untuk melihat pengguna di sekitar Anda.</p>
+                    </div>
+                `;
+                document.getElementById('gps-status-text').innerText = "GPS Terkunci (Belum Login)";
+                btnRequestGps.classList.add('hidden-page');
+                return;
+            }
+
+            document.getElementById('gps-status-text').innerText = "Menghubungkan...";
+            btnRequestGps.classList.add('hidden-page'); 
+            
+            if (!navigator.geolocation) {
+                document.getElementById('gps-status-text').innerText = "Tidak Didukung Perangkat";
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    currentLatitude = position.coords.latitude;
+                    currentLongitude = position.coords.longitude;
+                    
+                    document.getElementById('gps-status-text').innerText = "GPS Aktif";
+                    btnRequestGps.classList.add('hidden-page'); 
+                    
+                    sendLocationToBackend(currentLatitude, currentLongitude);
+                    fetchNearbyUsersFromServer();
+                },
+                (error) => {
+                    document.getElementById('gps-status-text').innerText = "Aktifkan GPS lokasi anda.";
+                    btnRequestGps.classList.remove('hidden-page'); 
+                    
+                    document.getElementById('nearby-users-list').innerHTML = `
+                        <div class="text-center py-12 text-xs text-gray-400 bg-gray-50 rounded-xl p-4">
+                            <i class="fas fa-location-dot text-2xl mb-2 text-red-500 animate-bounce"></i>
+                            <p class="font-bold text-gray-700">Akses Lokasi Nonaktif</p>
+                            <p class="mt-1 text-gray-500">Klik tombol <b>'Aktifkan Lokasi'</b> di atas untuk melihat pengguna sekitar yang sedang aktif.</p>
+                        </div>
+                    `;
+                    console.warn("Gagal mendapatkan koordinat presisi:", error.message);
+                },
+                { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+            );
+        }
+
+        function sendLocationToBackend(lat, lng) {
+            if (!isLoggedIn || !activeUserId) return;
+            
+            const payload = {
+                action: "update_location",
+                id_user: activeUserId,
+                latitude: lat,
+                longitude: lng
+            };
+
+            fetch(SPREADSHEET_API_URL, {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(resData => { console.log("Sinkronisasi Geolocation:", resData.message); })
+            .catch(err => { console.error("Koneksi gagal saat menyinkronkan lokasi."); });
+        }
+
+        function fetchNearbyUsersFromServer() {
+            if (currentLatitude === null || currentLongitude === null) return;
+            
+            const container = document.getElementById('nearby-users-list');
+
+            fetch(`${SPREADSHEET_API_URL}?action=get_nearby_users&id_user=${activeUserId}&latitude=${currentLatitude}&longitude=${currentLongitude}`)
+                .then(res => res.json())
+                .then(response => {
+                    if (response.status === "SUCCESS" && response.data) {
+                        renderNearbyUsers(response.data);
+                    } else {
+                        container.innerHTML = `<div class="text-center py-10 text-xs text-gray-400">Gagal memuat pengguna sekitar.</div>`;
+                    }
+                })
+                .catch(() => {
+                    container.innerHTML = `<div class="text-center py-10 text-xs text-gray-400">Kesalahan jaringan saat memproses penyaringan sekitar.</div>`;
+                });
+        }
+
+        function renderNearbyUsers(usersArray) {
+            const container = document.getElementById('nearby-users-list');
+            container.innerHTML = '';
+
+            if (usersArray.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-12 text-xs text-gray-400 bg-gray-50 rounded-xl">
+                        <i class="fas fa-street-view text-2xl mb-2 text-gray-300"></i>
+                        <p>Tidak ada pengguna aktif lain  di sekitar anda saat ini.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            usersArray.forEach(user => {
+                let displayDistance = "";
+                if (user.distance < 1000) {
+                    displayDistance = `${Math.round(user.distance)} m`; 
+                } else {
+                    displayDistance = `${(user.distance / 1000).toFixed(2)} km`; 
+                }
+
+                let genderIcon = "";
+                if (user.jenis_kelamin === "Laki-laki") {
+                    genderIcon = `<span class="text-[9px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full font-medium ml-1.5"><i class="fas fa-mars text-[8px]"></i> Laki-laki</span>`;
+                } else if (user.jenis_kelamin === "Perempuan") {
+                    genderIcon = `<span class="text-[9px] bg-pink-100 text-pink-600 px-1.5 py-0.5 rounded-full font-medium ml-1.5"><i class="fas fa-venus text-[8px]"></i> Perempuan</span>`;
+                }
+
+                const card = document.createElement('div');
+                card.className = "flex items-center p-3 hover:bg-gray-50 rounded-xl cursor-pointer transition border-b border-gray-100 bg-white shadow-xs mb-1";
+                card.innerHTML = `
+                    <img src="${user.avatar_url || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150'}" alt="Avatar" class="w-12 h-12 rounded-full object-cover mr-3 border-2 border-green-500 bg-gray-100" referrerpolicy="no-referrer">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex justify-between items-baseline mb-0.5">
+                            <h3 class="font-bold text-gray-800 text-sm truncate">${user.nama}</h3>
+                            <span class="text-[8px]  font-bold text-gray-500 whitespace-nowrap  px-2 py-0.5 rounded-md"><i class="fas fa-location-arrow text-[7px] mr-1"></i>${displayDistance}</span>
+                        </div>
+                        <div class="flex items-center mt-2">
+                            ${genderIcon}
+                        </div>
+                    </div>
+                `;
+                
+                card.onclick = () => {
+                    openUserProfile(user.id_user, user.nama, user.avatar_url, displayDistance, user.jenis_kelamin);
+                };
+
+                container.appendChild(card);
+            });
+        }
+
+        function handleAuthClick(type) {
+            if (type === 'Daftar') {
+                switchPage('register');
+            } else {
+                switchPage('login');
+            }
+        }
+
+        function submitLogin() {
+            const email = document.getElementById('login-email').value.trim();
+            const password = document.getElementById('login-password').value;
+            const loginBtn = document.getElementById('btn-submit-login');
+
+            if (!email) return alert("Email wajib diisi!");
+            if (!password) return alert("Kata sandi wajib diisi!");
+
+            loginBtn.disabled = true;
+            loginBtn.innerText = "Memuat...";
+
+            const payload = {
+                action: "login_user",
+                email: email,
+                password: password
+            };
+
+            fetch(SPREADSHEET_API_URL, {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(resData => {
+                if (resData.status === "SUCCESS") {
+                    alert("Berhasil Masuk!");
+                    activeUserId = resData.data.id_user;
+                    isLoggedIn = true;
+
+                    localStorage.setItem("isLoggedIn", "true");
+                    localStorage.setItem("activeUserId", activeUserId);
+
+                    initBackgroundGeolocation();
+                    switchPage('profile');
+                } else {
+                    alert("Gagal Masuk: " + resData.message);
+                }
+                loginBtn.disabled = false;
+                loginBtn.innerText = "Masuk";
+            })
+            .catch(err => {
+                alert("Terjadi masalah jaringan.");
+                loginBtn.disabled = false;
+                loginBtn.innerText = "Masuk";
+            });
+        }
+
+        function processLogout() {
+            if (confirm("Apakah anda yakin ingin keluar?")) {
+                isLoggedIn = false;
+                activeUserId = "";
+
+                if (watchPositionId !== null) {
+                    navigator.geolocation.clearWatch(watchPositionId);
+                    watchPositionId = null;
+                }
+                
+                if (window.locationHeartbeatId) {
+                    clearInterval(window.locationHeartbeatId);
+                    window.locationHeartbeatId = null;
+                }
+
+                localStorage.removeItem("isLoggedIn");
+                localStorage.removeItem("activeUserId");
+                localStorage.removeItem("lastActivePage");
+
+                resetToDefaultView();
+                switchPage('profile');
+            }
+        }
+
+        function resetToDefaultView() {
+            document.getElementById('avatar-placeholder').classList.remove('hidden-page');
+            document.getElementById('profile-avatar').classList.add('hidden-page');
+            document.getElementById('status-dot').classList.add('hidden-page');
+            document.getElementById('profile-name').innerText = "Guest";
+            document.getElementById('profile-name').classList.add('text-gray-400');
+            document.getElementById('profile-id').innerText = "ID: --";
+            
+            document.getElementById('profile-gender').classList.add('hidden-page');
+            document.getElementById('profile-gender').innerHTML = "";
+            
+            document.getElementById('album-hint').classList.add('hidden-page');
+            document.getElementById('media-grid').innerHTML = `
+                <div class="col-span-3 text-center text-xs py-10 text-gray-400">Album Masih Kosong.</div>
+            `;
+        }
+
+        function prepareRegistrationForm() {
+            document.getElementById('reg-name').value = "";
+            document.getElementById('reg-email').value = "";
+            document.getElementById('reg-otp').value = "";
+            document.getElementById('reg-password').value = "";
+            document.getElementById('reg-confirm-password').value = "";
+            
+            const genderRadios = document.getElementsByName('reg-gender');
+            genderRadios.forEach(radio => radio.checked = false);
+            
+            document.getElementById('wrapper-otp-input').classList.add('hidden-page');
+            const btnOtp = document.getElementById('btn-send-otp');
+            btnOtp.disabled = false;
+            btnOtp.innerText = "Kirim OTP";
+
+            capturedAvatarData = null;
+            capturedAlbumList = [];
+            document.getElementById('preview-avatar').classList.add('hidden-page');
+            document.getElementById('icon-avatar-placeholder').classList.remove('hidden-page');
+            renderAlbumPreviews();
+            document.getElementById('reg-generated-id').innerText = "ID..............";
+
+            fetch(`${SPREADSHEET_API_URL}?action=get_existing_ids`)
+                .then(res => res.json())
+                .then(response => {
+                    const blacklist = (response && response.data) ? response.data : [];
+                    generateUnique12DigitID(blacklist);
+                })
+                .catch(() => {
+                    generateUnique12DigitID([]);
+                });
+        }
+
+        function requestOtpToEmail() {
+            const emailInput = document.getElementById('reg-email').value.trim();
+            const btnOtp = document.getElementById('btn-send-otp');
+
+            if (!emailInput || !emailInput.includes('@')) {
+                return alert("Silakan masukkan alamat email yang valid!");
+            }
+
+            btnOtp.disabled = true;
+            btnOtp.innerText = "Mengirim...";
+
+            fetch(`${SPREADSHEET_API_URL}?action=send_otp&email=${encodeURIComponent(emailInput)}`)
+                .then(res => res.json())
+                .then(response => {
+                    if (response.status === "SUCCESS") {
+                        alert("Kode OTP telah dikirimkan ke email Anda.");
+                        document.getElementById('wrapper-otp-input').classList.remove('hidden-page');
+                        
+                        let cooldown = 60;
+                        const interval = setInterval(() => {
+                            cooldown--;
+                            btnOtp.innerText = `${cooldown}s`;
+                            if (cooldown <= 0) {
+                                clearInterval(interval);
+                                btnOtp.disabled = false;
+                                btnOtp.innerText = "Kirim Ulang";
+                            }
+                        }, 1000);
+                    } else {
+                        alert("Gagal mengirim OTP: " + response.message);
+                        btnOtp.disabled = false;
+                        btnOtp.innerText = "Kirim OTP";
+                    }
+                })
+                .catch(err => {
+                    alert("Periksa Jaringan Internet Anda.");
+                    btnOtp.disabled = false;
+                    btnOtp.innerText = "Kirim OTP";
+                });
+        }
+
+        function generateUnique12DigitID(blacklist) {
+            let numID = "";
+            do {
+                numID = "";
+                for (let i = 0; i < 12; i++) {
+                    numID += Math.floor(Math.random() * 10).toString();
+                }
+            } while (blacklist.includes(numID));
+            generatedID = numID;
+            document.getElementById('reg-generated-id').innerText = "ID: " + generatedID;
+        }
+
+        function openCameraModal(target) {
+            cameraTarget = target;
+            const modalTitle = document.getElementById('camera-mode-title');
+            
+            if (target === 'avatar' || target === 'edit_profile_avatar') {
+                modalTitle.innerText = "Ambil Foto Profil";
+            } else if (target === 'album') {
+                modalTitle.innerText = "Ambil Foto Album";
+            } else if (target === 'profile_add_album') {
+                modalTitle.innerText = "Ambil Foto Baru";
+            }
+            document.getElementById('camera-modal').classList.remove('hidden-page');
+            startCameraStream();
+        }
+
+        function startCameraStream() {
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+            }
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: currentFacingMode, width: 480, height: 480 }, audio: false })
+                .then(stream => {
+                    localStream = stream;
+                    document.getElementById('camera-stream').srcObject = stream;
+                })
+                .catch(err => {
+                    alert("Gagal mengakses kamera: " + err.message);
+                    closeCameraModal();
+                });
+        }
+
+        function flipCamera() {
+            currentFacingMode = (currentFacingMode === "user") ? "environment" : "user";
+            startCameraStream();
+        }
+
+        function closeCameraModal() {
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+            }
+            document.getElementById('camera-modal').classList.add('hidden-page');
+        }
+
+        function captureMedia() {
+            const video = document.getElementById('camera-stream');
+            const canvas = document.getElementById('camera-canvas');
+            const ctx = canvas.getContext('2d');
+
+            canvas.width = video.videoWidth || 480;
+            canvas.height = video.videoHeight || 480;
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.65);
+
+            if (cameraTarget === 'avatar') {
+                capturedAvatarData = dataUrl;
+                const imgPreview = document.getElementById('preview-avatar');
+                imgPreview.src = dataUrl;
+                imgPreview.classList.remove('hidden-page');
+                document.getElementById('icon-avatar-placeholder').classList.add('hidden-page');
+                closeCameraModal();
+            } else if (cameraTarget === 'edit_profile_avatar') {
+                closeCameraModal();
+                updateExistingProfileAvatar(dataUrl);
+            } else if (cameraTarget === 'album') {
+                capturedAlbumList.push({ type: 'image', url: dataUrl });
+                renderAlbumPreviews();
+                closeCameraModal();
+            } else if (cameraTarget === 'profile_add_album') {
+                closeCameraModal();
+                uploadNewPhotoToProfileAlbum(dataUrl);
+            }
+        }
+
+        function updateExistingProfileAvatar(base64Data) {
+            const avatarImg = document.getElementById('profile-avatar');
+            avatarImg.style.opacity = "0.5";
+            
+            const payload = {
+                action: "update_profile_avatar",
+                id_user: activeUserId,
+                avatar_url: base64Data
+            };
+
+            fetch(SPREADSHEET_API_URL, {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(resData => {
+                avatarImg.style.opacity = "1";
+                if (resData.status === "SUCCESS") {
+                    alert("Foto profil berhasil diperbarui!");
+                    loadDataFromGoogleSheets();
+                } else {
+                    alert("Gagal memperbarui foto profil: " + resData.message);
+                }
+            })
+            .catch(() => {
+                avatarImg.style.opacity = "1";
+                alert("Terjadi masalah koneksi saat mengedit foto profil.");
+            });
+        }
+
+        function renderAlbumPreviews() {
+            const grid = document.getElementById('preview-album-grid');
+            grid.innerHTML = ''; 
+
+            capturedAlbumList.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'relative aspect-square bg-gray-200 rounded border border-gray-300 overflow-hidden text-xs';
+                div.innerHTML = `
+                    <img src="${item.url}" class="w-full h-full object-cover">
+                    <button type="button" onclick="removeAlbumItem(${index})" class="absolute top-0 right-0 bg-red-600 text-white w-5 h-5 text-[10px] flex items-center justify-center rounded-bl shadow-md"><i class="fas fa-trash"></i></button>
+                `;
+                grid.appendChild(div);
+            });
+
+            const addButton = document.createElement('button');
+            addButton.type = 'button';
+            addButton.onclick = () => openCameraModal('album');
+            addButton.className = 'aspect-square bg-gray-100 border-2 border-dashed border-gray-300 rounded flex flex-col items-center justify-center text-gray-400 hover:text-green-600 hover:border-green-500 transition cursor-pointer active:scale-95';
+            addButton.innerHTML = `
+                <i class="fas fa-plus text-lg mb-0.5"></i>
+                <span class="text-[9px] font-semibold uppercase tracking-tight">Foto</span>
+            `;
+            grid.appendChild(addButton);
+        }
+
+        function removeAlbumItem(index) {
+            capturedAlbumList.splice(index, 1);
+            renderAlbumPreviews();
+        }
+
+        function submitRegistration() {
+            const name = document.getElementById('reg-name').value.trim();
+            const email = document.getElementById('reg-email').value.trim();
+            const otpCode = document.getElementById('reg-otp').value.trim();
+            const password = document.getElementById('reg-password').value;
+            const confirmPassword = document.getElementById('reg-confirm-password').value;
+            const submitBtn = document.getElementById('btn-submit-reg');
+
+            let selectedGender = "";
+            const genderRadios = document.getElementsByName('reg-gender');
+            for (let i = 0; i < genderRadios.length; i++) {
+                if (genderRadios[i].checked) {
+                    selectedGender = genderRadios[i].value;
+                    break;
+                }
+            }
+
+            if (!capturedAvatarData) return alert("foto profil wajib di isi!");
+            if (!name) return alert("Nama Lengkap wajib diisi!");
+            if (!selectedGender) return alert("Silakan pilih Jenis Kelamin Anda!");
+            if (!email) return alert("Alamat Email wajib diisi!");
+            if (!otpCode || otpCode.length < 5) return alert("Masukkan 5 digit kode OTP verifikasi Anda!");
+            if (capturedAlbumList.length === 0) return alert("Wajib melampirkan minimal 1 foto di album!");
+            if (!password || password.length < 4) return alert("Kata Sandi minimal 4 karakter!");
+            if (password !== confirmPassword) return alert("Konfirmasi kata sandi salah!");
+
+            const payload = {
+                action: "register_user",
+                id_user: generatedID,
+                nama: name,
+                jenis_kelamin: selectedGender, 
+                email: email,
+                otp_input: otpCode,
+                avatar_url: capturedAvatarData, 
+                password: password, 
+                media: capturedAlbumList
+            };
+
+            submitBtn.disabled = true;
+            submitBtn.innerText = "Memuat...";
+
+            fetch(SPREADSHEET_API_URL, {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(resData => {
+                if(resData.status === "SUCCESS") {
+                    alert("Akun Berhasil Dibuat!");
+                    activeUserId = generatedID;
+                    isLoggedIn = true;
+
+                    localStorage.setItem("isLoggedIn", "true");
+                    localStorage.setItem("activeUserId", activeUserId);
+
+                    initBackgroundGeolocation();
+                    switchPage('profile');
+                } else {
+                    alert("Gagal Mendaftar: " + resData.message);
+                }
+                submitBtn.disabled = false;
+                submitBtn.innerText = "Daftar";
+            })
+            .catch(() => {
+                alert("Mohon Tunggu....");
+                activeUserId = generatedID;
+                isLoggedIn = true;
+                
+                localStorage.setItem("isLoggedIn", "true");
+                localStorage.setItem("activeUserId", activeUserId);
+                
+                submitBtn.disabled = false;
+                submitBtn.innerText = "Daftar";
+                switchPage('profile');
+            });
+        }
+
+        function loadDataFromGoogleSheets() {
+            document.getElementById('media-grid').innerHTML = `
+                <div class="col-span-3 text-center text-xs py-10 text-gray-400">
+                    <i class="fas fa-spinner animate-spin mr-2"></i> Memuat...
+                </div>
+            `;
+
+            fetch(`${SPREADSHEET_API_URL}?action=get_profile&id=${activeUserId}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data) {
+                        currentLoadedMediaList = data.media || [];
+                        renderProfile(data);
+                    } else {
+                        resetToDefaultView();
+                    }
+                })
+                .catch(() => {
+                    console.log("Menampilkan pratinjau halaman.");
+                });
+        }
+
+        function renderProfile(data) {
+            document.getElementById('avatar-placeholder').classList.add('hidden-page');
+            const profileAvatar = document.getElementById('profile-avatar');
+            profileAvatar.classList.remove('hidden-page');
+            document.getElementById('status-dot').classList.remove('hidden-page');
+            
+            profileAvatar.src = data.avatar_url || "";
+
+            const nameEl = document.getElementById('profile-name');
+            nameEl.innerText = data.nama || "";
+            nameEl.classList.remove('text-gray-400');
+            nameEl.classList.add('text-gray-800');
+            
+            document.getElementById('profile-id').innerText = "ID: " + (data.id_user || "");
+
+            const genderEl = document.getElementById('profile-gender');
+            if (data.jenis_kelamin) {
+                genderEl.classList.remove('hidden-page');
+                if (data.jenis_kelamin === "Laki-laki") {
+                    genderEl.innerHTML = `<span class="bg-blue-50 text-blue-600 border border-blue-200 px-3 py-0.5 rounded-full text-[11px] font-semibold inline-flex items-center"><i class="fas fa-mars mr-1 text-blue-500"></i> Laki-laki</span>`;
+                } else if (data.jenis_kelamin === "Perempuan") {
+                    genderEl.innerHTML = `<span class="bg-pink-50 text-pink-600 border border-pink-200 px-3 py-0.5 rounded-full text-[11px] font-semibold inline-flex items-center"><i class="fas fa-venus mr-1 text-pink-500"></i> Perempuan</span>`;
+                } else {
+                    genderEl.classList.add('hidden-page');
+                }
+            } else {
+                genderEl.classList.add('hidden-page');
+            }
+
+            if (data.media && data.media.length > 0) {
+                document.getElementById('album-hint').classList.remove('hidden-page');
+            } else {
+                document.getElementById('album-hint').classList.add('hidden-page');
+            }
+
+            buildMediaGrid();
+        }
+
+        function buildMediaGrid() {
+            const mediaGrid = document.getElementById('media-grid');
+            mediaGrid.innerHTML = ''; 
+
+            const addBtnWrapper = document.createElement('div');
+            addBtnWrapper.id = "btn-profile-add-photo";
+            addBtnWrapper.className = 'aspect-square w-full bg-gray-50 border-2 border-dashed border-gray-300 rounded flex flex-col items-center justify-center text-gray-400 hover:text-green-600 hover:border-green-500 transition cursor-pointer active:scale-95 shadow-sm';
+            addBtnWrapper.innerHTML = `
+                <i class="fas fa-plus text-xl mb-1"></i>
+                <span class="text-[10px] font-bold uppercase tracking-wide">FOTO</span>
+            `;
+            addBtnWrapper.onclick = () => {
+                if (isAlbumEditMode) return;
+                openCameraModal('profile_add_album');
+            };
+            mediaGrid.appendChild(addBtnWrapper);
+
+            if (currentLoadedMediaList && currentLoadedMediaList.length > 0) {
+                currentLoadedMediaList.forEach((item, index) => {
+                    const itemWrapper = document.createElement('div');
+                    itemWrapper.className = 'relative aspect-square w-full bg-gray-100 rounded overflow-hidden shadow-sm cursor-pointer select-none';
+                    
+                    itemWrapper.innerHTML = `
+                        <img src="${item.url}" class="w-full h-full object-cover pointer-events-none" referrerpolicy="no-referrer">
+                        <div class="checkbox-container hidden absolute top-1 right-1 bg-white/80 p-0.5 rounded border border-gray-300 flex items-center justify-center w-5 h-5">
+                            <input type="checkbox" value="${index}" class="photo-checkbox accent-red-600 w-3.5 h-3.5 cursor-pointer">
+                        </div>
+                    `;
+
+                    let pressTimer;
+                    
+                    const startPress = (e) => {
+                        if (isAlbumEditMode) return;
+                        pressTimer = setTimeout(() => {
+                            enterAlbumEditMode();
+                        }, 800); 
+                    };
+
+                    const cancelPress = () => {
+                        clearTimeout(pressTimer);
+                    };
+
+                    itemWrapper.addEventListener('touchstart', startPress);
+                    itemWrapper.addEventListener('touchend', cancelPress);
+                    itemWrapper.addEventListener('mousedown', startPress);
+                    itemWrapper.addEventListener('mouseup', cancelPress);
+                    itemWrapper.addEventListener('mouseleave', cancelPress);
+
+                    itemWrapper.onclick = (e) => {
+                        if (isAlbumEditMode) {
+                            const cb = itemWrapper.querySelector('.photo-checkbox');
+                            cb.checked = !cb.checked;
+                        } else {
+                            window.open(item.url, '_blank');
+                        }
+                    };
+
+                    mediaGrid.appendChild(itemWrapper);
+                });
+            } else if (currentLoadedMediaList.length === 0) {
+                document.getElementById('album-hint').classList.add('hidden-page');
+            }
+        }
+
+        function enterAlbumEditMode() {
+            isAlbumEditMode = true;
+            document.getElementById('album-mode-badge').classList.remove('hidden-page');
+            document.getElementById('album-edit-actions').classList.remove('hidden-page');
+            document.getElementById('btn-profile-add-photo').classList.add('hidden');
+            
+            document.querySelectorAll('.checkbox-container').forEach(el => {
+                el.classList.remove('hidden');
+            });
+        }
+
+        function exitAlbumEditMode() {
+            isAlbumEditMode = false;
+            const badge = document.getElementById('album-mode-badge');
+            const actions = document.getElementById('album-edit-actions');
+            if(badge) badge.classList.add('hidden-page');
+            if(actions) actions.classList.add('hidden-page');
+            
+            const addBtn = document.getElementById('btn-profile-add-photo');
+            if(addBtn) addBtn.classList.remove('hidden');
+            
+            document.querySelectorAll('.checkbox-container').forEach(el => {
+                el.classList.add('hidden');
+            });
+            document.querySelectorAll('.photo-checkbox').forEach(cb => {
+                cb.checked = false;
+            });
+        }
+
+        function deleteSelectedPhotos() {
+            const checkedBoxes = document.querySelectorAll('.photo-checkbox:checked');
+            if (checkedBoxes.length === 0) {
+                return alert("Silakan pilih/checklist minimal satu foto yang ingin dihapus!");
+            }
+
+            if (!confirm(`Apakah Anda yakin ingin menghapus ${checkedBoxes.length} foto dari album?`)) {
+                return;
+            }
+
+            let indexesToDelete = [];
+            checkedBoxes.forEach(cb => {
+                indexesToDelete.push(parseInt(cb.value));
+            });
+
+            indexesToDelete.sort((a, b) => b - a);
+
+            let updatedMediaList = [...currentLoadedMediaList];
+            indexesToDelete.forEach(idx => {
+                updatedMediaList.splice(idx, 1);
+            });
+
+            const actionContainer = document.getElementById('album-edit-actions');
+            const originalHTML = actionContainer.innerHTML;
+            actionContainer.innerHTML = `<i class="fas fa-spinner animate-spin text-red-600 text-sm"></i> <span class="text-[10px] text-gray-400">Menghapus...</span>`;
+
+            const payload = {
+                action: "delete_album_photos",
+                id_user: activeUserId,
+                updated_media: updatedMediaList
+            };
+
+            fetch(SPREADSHEET_API_URL, {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(resData => {
+                actionContainer.innerHTML = originalHTML;
+                if (resData.status === "SUCCESS") {
+                    alert("Foto berhasil dihapus!");
+                    exitAlbumEditMode();
+                    loadDataFromGoogleSheets();
+                } else {
+                    alert("Gagal menghapus foto: " + resData.message);
+                    exitAlbumEditMode();
+                }
+            })
+            .catch(() => {
+                actionContainer.innerHTML = originalHTML;
+                alert("Gagal memproses permintaan hapus. Coba lagi.");
+                exitAlbumEditMode();
+            });
+        }
+
+        function uploadNewPhotoToProfileAlbum(base64Data) {
+            const addBtn = document.getElementById('btn-profile-add-photo');
+            
+            if (!addBtn || currentPage === 'chat-room') {
+                sendPhotoAsChatMessage(base64Data);
+                return;
+            }
+
+            const originalContent = addBtn.innerHTML;
+            addBtn.innerHTML = `
+                <i class="fas fa-spinner animate-spin text-xl text-green-600 mb-1"></i>
+                <span class="text-[9px] text-gray-500 font-semibold uppercase"></span>
+            `;
+            addBtn.style.pointerEvents = "none";
+
+            const payload = {
+                action: "add_album_photo",
+                id_user: activeUserId,
+                photo_url: base64Data
+            };
+
+            fetch(SPREADSHEET_API_URL, {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(resData => {
+                if (resData.status === "SUCCESS") {
+                    alert("Foto baru berhasil ditambahkan ke album!");
+                    loadDataFromGoogleSheets(); 
+                } else {
+                    alert("Gagal menambahkan foto: " + resData.message);
+                    addBtn.innerHTML = originalContent;
+                    addBtn.style.pointerEvents = "auto";
+                }
+            })
+            .catch((err) => {
+                alert("Terjadi kesalahan sistem atau jaringan gagal terhubung.");
+                addBtn.innerHTML = originalContent;
+                addBtn.style.pointerEvents = "auto";
+            });
+        }
+
+        function sendPhotoAsChatMessage(base64Data) {
+            const icon = document.getElementById('attachment-icon');
+            if (icon) icon.className = "fas fa-spinner animate-spin text-sm text-gray-500";
+
+            const payload = {
+                action: "upload_chat_photo", 
+                id_user: activeUserId,
+                photo_url: base64Data
+            };
+
+            fetch(SPREADSHEET_API_URL, {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(resData => {
+                closeAttachmentMenu(); 
+                if (resData.status === "SUCCESS") {
+                    document.getElementById('chat-input-message').value = `[IMAGE]${resData.url}`;
+                    sendChatMessage();
+                } else {
+                    alert("Gagal memproses unggah foto chat: " + resData.message);
+                }
+            })
+            .catch(() => {
+                closeAttachmentMenu();
+                alert("Koneksi gagal mengunggah media chat foto.");
+            });
+        }
+        
+                // Tambahkan polling berkala untuk sinkronisasi live badge di tab bawah (setiap 10 detik)
+        setInterval(() => {
+            if (isLoggedIn && currentPage !== 'chat-room') {
+                fetch(`${SPREADSHEET_API_URL}?action=get_chat_history&id_user=${activeUserId}`)
+                .then(res => res.json())
+                .then(response => {
+                    if (response.status === "SUCCESS" && response.data.length > 0) {
+                        let totalUsersSendingUnread = 0;
+                        response.data.forEach(chat => {
+                            if (chat.unread_count && chat.unread_count > 0) totalUsersSendingUnread++;
+                        });
+                        const navBadge = document.getElementById('nav-chat-badge');
+                        if (navBadge) {
+                            if (totalUsersSendingUnread > 0) {
+                                navBadge.innerText = totalUsersSendingUnread;
+                                navBadge.classList.remove('hidden-page');
+                            } else {
+                                navBadge.classList.add('hidden-page');
+                            }
+                        }
+                    }
+                }).catch(e => console.log("Background badge update error."));
+            }
+        }, 10000);
+
+    </script>
+</body>
+</html>
