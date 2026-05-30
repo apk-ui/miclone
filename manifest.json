@@ -1,0 +1,21 @@
+{
+  "short_name": "MiClone",
+  "name": "MiClone",
+  "icons": [
+    {
+      "src": "iconApps.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "iconApps512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/index.html",
+  "background_color": "linear-gradient(#0CB009, #5CB009);",
+  "theme_color": "#000000",
+  "display": "standalone",
+  "orientation": "portrait"
+}
