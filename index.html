@@ -831,16 +831,32 @@
             openCameraModal('profile_add_album');
         }
 
-        function actionShareCurrentLocation() {
-            closeAttachmentMenu();
-            if (currentLatitude === null || currentLongitude === null) {
-                alert("Gagal mendapatkan lokasi GPS Anda. Pastikan izin lokasi aktif.");
-                return;
-            }
-            const locationText = `[LOCATION]${currentLatitude},${currentLongitude}`;
-            document.getElementById('chat-input-message').value = locationText;
-            sendChatMessage();
-        }
+function actionShareCurrentLocation() { closeAttachmentMenu();
+    if (!navigator.geolocation) {
+        return alert("Fitur GPS lokasi tidak didukung oleh browser Anda.");
+    }
+
+    // Ubah ikon plus menjadi spinner loading
+    const icon = document.getElementById('attachment-icon');
+    if (icon) icon.className = "fas fa-spinner animate-spin text-sm text-gray-500";
+
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            
+            const locationMessage = `[LOCATION]${lat},${lng}`;
+            // Kirim ke database & refresh chat
+            executeDirectSendMessage(locationMessage);
+        },
+        (error) => {
+            alert("Gagal mendapatkan lokasi Anda. Pastikan akses GPS diaktifkan.");
+            // Kembalikan ikon jadi plus jika gagal mendapatkan GPS
+            if (icon) icon.className = "fas fa-plus text-sm text-gray-500";
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+}
 
                 function openChatRoom(targetId, targetName, targetAvatar) {
             if (!isLoggedIn) {
@@ -1953,34 +1969,80 @@
         }
 
         function sendPhotoAsChatMessage(base64Data) {
-            const icon = document.getElementById('attachment-icon');
-            if (icon) icon.className = "fas fa-spinner animate-spin text-sm text-gray-500";
+    // Ubah ikon plus menjadi spinner loading
+    const icon = document.getElementById('attachment-icon');
+    if (icon) icon.className = "fas fa-spinner animate-spin text-sm text-gray-500";
 
-            const payload = {
-                action: "upload_chat_photo", 
-                id_user: activeUserId,
-                photo_url: base64Data
-            };
+    const payload = {
+        action: "upload_chat_photo", 
+        id_user: activeUserId,
+        photo_url: base64Data
+    };
 
-            fetch(SPREADSHEET_API_URL, {
-                method: 'POST',
-                body: JSON.stringify(payload)
-            })
-            .then(res => res.json())
-            .then(resData => {
-                closeAttachmentMenu(); 
-                if (resData.status === "SUCCESS") {
-                    document.getElementById('chat-input-message').value = `[IMAGE]${resData.url}`;
-                    sendChatMessage();
-                } else {
-                    alert("Gagal memproses unggah foto chat: " + resData.message);
-                }
-            })
-            .catch(() => {
-                closeAttachmentMenu();
-                alert("Koneksi gagal mengunggah media chat foto.");
-            });
+    fetch(SPREADSHEET_API_URL, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(resData => {
+        closeAttachmentMenu(); 
+        if (resData.status === "SUCCESS") {
+            const photoMessage = `[IMAGE]${resData.url}`;
+            // Kirim ke database & refresh chat
+            executeDirectSendMessage(photoMessage);
+        } else {
+            alert("Gagal memproses unggah foto chat: " + resData.message);
+            // Kembalikan ikon jadi plus jika gagal di tahap ini
+            if (icon) icon.className = "fas fa-plus text-sm text-gray-500";
         }
+    })
+    .catch(() => {
+        closeAttachmentMenu();
+        alert("Koneksi gagal mengunggah media chat foto.");
+        // Kembalikan ikon jadi plus jika gagal koneksi
+        if (icon) icon.className = "fas fa-plus text-sm text-gray-500";
+    });
+}
+
+function executeDirectSendMessage(specialMessage) {
+    if (!isLoggedIn || !activeUserId || !activeChatTargetId) {
+        // Jika gagal validasi, kembalikan ikon ke semula
+        const icon = document.getElementById('attachment-icon');
+        if (icon) icon.className = "fas fa-plus text-sm text-gray-500";
+        return;
+    }
+
+    const payload = {
+        action: "send_message",
+        sender_id: activeUserId,
+        receiver_id: activeChatTargetId,
+        message: specialMessage
+    };
+
+    fetch(SPREADSHEET_API_URL, {
+        method: "POST",
+        body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === "SUCCESS") {
+            // Refresh layar obrolan agar pesan baru langsung tampil
+            fetchChatMessages();
+        } else {
+            alert("Gagal mengirim pesan otomatis: " + data.message);
+        }
+    })
+    .catch(() => {
+        alert("Terjadi masalah koneksi jaringan saat mengirim data.");
+    })
+    .finally(() => {
+        // OTOMATIS KEMBALI JADI ICON PLUS SETELAH PROSES SELESAI / TAMPIL
+        const icon = document.getElementById('attachment-icon');
+        if (icon) {
+            icon.className = "fas fa-plus text-sm text-gray-500";
+        }
+    });
+}
         
                 // Tambahkan polling berkala untuk sinkronisasi live badge di tab bawah (setiap 10 detik)
         setInterval(() => {
