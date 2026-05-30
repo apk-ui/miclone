@@ -1952,6 +1952,72 @@
             }
         }, 10000);
 
+let deferredPrompt;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    // Mencegah browser menampilkan prompt bawaan secara otomatis
+    e.preventDefault();
+    // Simpan event ke variabel agar bisa dipicu nanti
+    deferredPrompt = e;
+    
+    // Cek apakah user sudah pernah menolak/menutup instalasi pada sesi ini
+    const isDismissed = sessionStorage.getItem('install_prompt_dismissed');
+    
+    // Tampilkan modal download otomatis setelah PWA siap (misal diberi delay 2 detik biar halus)
+    if (!isDismissed) {
+        setTimeout(() => {
+            showInstallModal();
+        }, 200);
+    }
+});
+
+// Fungsi untuk Membuka Modal Install
+function showInstallModal() {
+    const installModal = document.getElementById('install-modal');
+    if (installModal) {
+        installModal.classList.remove('hidden');
+    }
+}
+
+// Fungsi untuk Menutup Modal Install
+function closeInstallModal() {
+    const installModal = document.getElementById('install-modal');
+    if (installModal) {
+        installModal.classList.add('hidden');
+    }
+    // Menyimpan status penolakan sementara di session storage agar tidak terus menerus mengganggu user di sesi yang sama
+    sessionStorage.setItem('install_prompt_dismissed', 'true');
+}
+
+// Pasang Event Listener Klik ke Tombol Install di dalam Modal
+document.getElementById('btn-install-app').addEventListener('click', async () => {
+    if (!deferredPrompt) {
+        alert("Aplikasi sudah terinstal atau perangkat Anda belum mendukung fitur ini.");
+        closeInstallModal();
+        return;
+    }
+    
+    // Tampilkan prompt instalasi bawaan browser
+    deferredPrompt.prompt();
+    
+    // Tunggu respon pilihan dari pengguna
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log(`User response to the install prompt: ${outcome}`);
+    
+    // Reset deferredPrompt karena prompt hanya bisa digunakan sekali
+    deferredPrompt = null;
+    
+    // Tutup modal setelah proses selesai
+    closeInstallModal();
+});
+
+// Deteksi jika aplikasi berhasil terinstal secara penuh
+window.addEventListener('appinstalled', (evt) => {
+    console.log('Aplikasi berhasil ditambahkan ke layar utama.');
+    alert('Aplikasi berhasil ditambahkan ke layar utama!');
+    closeInstallModal();
+});
+
     </script>
 </body>
 </html>
